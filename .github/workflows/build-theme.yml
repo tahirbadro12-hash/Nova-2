@@ -13,12 +13,16 @@ jobs:
         run: unzip -q buildkit.zip "theme/*" "bundle-static/*"
       - name: Fetch src parts (relay/appsrc)
         run: |
-          BASE="https://raw.githubusercontent.com/tahirbadro12-hash/Nova-2/relay/appsrc"
           for p in aa ab ac ad ae af ag ah ai aj ak; do
-            curl -sfL -H "Authorization: Bearer $GITHUB_TOKEN" "$BASE/appsrc_part_$p" -o "part_$p" || { echo "part $p failed"; exit 1; }
+            curl -sfL -H "Accept: application/vnd.github.raw+json" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/tahirbadro12-hash/Nova-2/contents/appsrc_part_$p?ref=relay/appsrc" \
+              -o "part_$p" || { echo "part $p failed"; exit 1; }
           done
+          ls -la part_*
           cat part_aa part_ab part_ac part_ad part_ae part_af part_ag part_ah part_ai part_aj part_ak > src.zip
           head -c 2 src.zip; echo "  <- PK"
+          rm -f part_*
       - name: Extract projects (skip bin/obj)
         run: |
           mkdir -p work && cd work
@@ -68,6 +72,8 @@ jobs:
       - name: Save failure log
         if: failure()
         run: |
-          { echo '== app =='; tail -80 build-app.log 2>/dev/null; echo '== server =='; tail -80 build-server.log 2>/dev/null; } > failure.log
+          { echo '== app =='; tail -80 build-app.log 2>/dev/null || true; echo '== server =='; tail -80 build-server.log 2>/dev/null || true; } > failure.log
           git config user.name "bot"; git config user.email "bot@users.noreply.github.com"
-          git add failure.log; git commit -m "build failure log"; git push
+          git add failure.log
+          git commit -m "build failure log" || true
+          git push || echo "push failed"
