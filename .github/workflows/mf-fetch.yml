@@ -18,21 +18,12 @@ jobs:
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
           curl -sL -c /tmp/cj -A "$UA" -H "Accept: text/html" "$URL" -o page.html
           echo "page bytes: $(wc -c < page.html)"
-          DL=$(grep -oE 'https://www\.mediafire\.com/[A-Za-z0-9+/=_-]+/download' page.html | head -1)
-          [ -z "$DL" ] && DL=$(grep -oE 'https://(d|cf)\.(mediafire|cashfiles|dlfiles)\.com/[A-Za-z0-9?=&%/.~-]+' page.html | head -1)
-          [ -z "$DL" ] && DL=$(grep -oE 'https://www\.mediafire\.com/[A-Za-z0-9+/=]{20,}/download' page.html | head -1)
-          if [ -z "$DL" ]; then
-            echo "لم يُعثر على الرابط — سأحفظ الصفحة نفسها في المستودع للفحص"
-            git config user.name "bot"; git config user.email "bot@users.noreply.github.com"
-            git add page.html
-            git commit -m "mediafire page for inspection"
-            git push
-            exit 1
-          fi
-          echo "DL link found: $DL"
-          curl -sL -b /tmp/cj -A "$UA" -o src.zip "$DL"
+          DL=$(grep -oE 'https://download[0-9]+\.mediafire\.com/[^"\\]+' page.html | head -1)
+          [ -z "$DL" ] && { echo "لم يُعثر على الرابط — page.html محفوظة للفحص"; git config user.name bot; git config user.email bot@users.noreply.github.com; git add page.html; git commit -m "mediafire page debug"; git push; exit 1; }
+          echo "DL: ${DL:0:80}..."
+          curl -sL -b /tmp/cj -A "$UA" -H "Referer: $URL" -o src.zip "$DL"
           ls -la src.zip
-          head -c 4 src.zip | xxd
+          head -c 2 src.zip
       - name: Commit
         if: success()
         run: |
