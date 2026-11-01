@@ -1,0 +1,29 @@
+# .github/workflows/mf-fetch.yml
+name: Fetch from MediaFire
+on:
+  workflow_dispatch:
+    inputs:
+      mediafire_url:
+        description: 'رابط الملف من MediaFire'
+        required: true
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download
+        run: |
+          PAGE=$(curl -sL -c /tmp/cj "${{ github.event.inputs.mediafire_url }}")
+          DL=$(echo "$PAGE" | grep -oE 'https://www\.mediafire\.com/download/[A-Za-z0-9]+' | head -1)
+          [ -z "$DL" ] && { echo "لم يُعثر على رابط التحميل"; exit 1; }
+          curl -sL -b /tmp/cj -o app-src.zip "$DL"
+          ls -la app-src.zip
+      - name: Commit
+        run: |
+          git config user.name "bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add app-src.zip
+          git commit -m "app-src.zip (MediaFire relay)"
+          git push
