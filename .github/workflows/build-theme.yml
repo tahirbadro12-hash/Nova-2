@@ -1,0 +1,73 @@
+name: Build NovaPOS (theme)
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0'
+      - name: Unpack buildkit
+        run: unzip -q buildkit.zip "theme/*" "bundle-static/*"
+      - name: Fetch src parts (relay/appsrc)
+        run: |
+          BASE="https://raw.githubusercontent.com/tahirbadro12-hash/Nova-2/relay/appsrc"
+          for p in aa ab ac ad ae af ag ah ai aj ak; do
+            curl -sfL -H "Authorization: Bearer $GITHUB_TOKEN" "$BASE/appsrc_part_$p" -o "part_$p" || { echo "part $p failed"; exit 1; }
+          done
+          cat part_aa part_ab part_ac part_ad part_ae part_af part_ag part_ah part_ai part_aj part_ak > src.zip
+          head -c 2 src.zip; echo "  <- PK"
+      - name: Extract projects (skip bin/obj)
+        run: |
+          mkdir -p work && cd work
+          unzip -q ../src.zip -x "*/bin/*" "*/obj/*"
+          rm -f NovaPOS.App/NovaPOS.App_wxbfmzbs_wpftmp.csproj
+      - name: Apply theme
+        run: |
+          cd work
+          cp ../theme/App.xaml ../theme/App.xaml.cs ../theme/NovaPOS.App.csproj NovaPOS.App/
+          mkdir -p NovaPOS.App/Services NovaPOS.App/Styles/Theme
+          cp ../theme/Services/ThemeManager.cs NovaPOS.App/Services/
+          cp ../theme/Fonts/*.ttf NovaPOS.App/Fonts/
+          cp ../theme/Styles/Typography.xaml ../theme/Styles/Controls.xaml ../theme/Styles/DataGrid.xaml NovaPOS.App/Styles/
+          cp ../theme/Styles/Theme/*.xaml NovaPOS.App/Styles/Theme/
+          rm -v NovaPOS.App/Styles/Palette.xaml
+      - name: Publish app
+        run: |
+          mkdir -p bundle
+          dotnet publish work/NovaPOS.App/NovaPOS.App.csproj -c Release -r win-x64 \
+            --self-contained true -p:EnableWindowsTargeting=true -p:PublishReadyToRun=false \
+            -p:DebugType=none -p:DebugSymbols=false -o bundle/app-publish > build-app.log 2>&1 \
+            || { echo '=== APP FAILED ==='; tail -60 build-app.log; exit 1; }
+          tail -5 build-app.log
+      - name: Publish server
+        run: |
+          dotnet publish work/NovaPOS.Server/NovaPOS.Server.csproj -c Release -r win-x64 \
+            --self-contained true -p:EnableWindowsTargeting=true \
+            -p:DebugType=none -p:DebugSymbols=false -o bundle/server > build-server.log 2>&1 \
+            || { echo '=== SERVER FAILED ==='; tail -60 build-server.log; exit 1; }
+          tail -5 build-server.log
+      - name: Assemble bundle
+        run: |
+          mv bundle/app-publish/* bundle/ && rmdir bundle/app-publish
+          mkdir -p bundle/installer
+          cp bundle-static/installer/*.ps1 bundle/installer/
+          cp bundle-static/BACKUP-RESTORE.md bundle-static/THIRD-PARTY-NOTICES.txt bundle/
+          ( cd bundle && find . -type f -print0 | xargs -0 sha256sum | sort -k3 > bundle-manifest.txt )
+          ( cd bundle && zip -qr ../nova-pos-theme-bundle.zip . )
+          ls -la nova-pos-theme-bundle.zip
+      - name: Upload release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: theme-build-${{ github.run_number }}
+          name: NovaPOS 1.0.0 — Theme bundle (run ${{ github.run_number }})
+          files: nova-pos-theme-bundle.zip
+          prerelease: true
+      - name: Save failure log
+        if: failure()
+        run: |
+          { echo '== app =='; tail -80 build-app.log 2>/dev/null; echo '== server =='; tail -80 build-server.log 2>/dev/null; } > failure.log
+          git config user.name "bot"; git config user.email "bot@users.noreply.github.com"
+          git add failure.log; git commit -m "build failure log"; git push
