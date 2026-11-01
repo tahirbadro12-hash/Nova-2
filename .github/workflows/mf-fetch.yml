@@ -2,9 +2,13 @@ name: Fetch from MediaFire
 on:
   workflow_dispatch:
     inputs:
-      mediafire_url:
-        description: 'رابط الملف من MediaFire'
+      mode:
+        description: 'download أو cleanup'
         required: true
+        default: download
+      mediafire_url:
+        description: 'رابط الملف (لوضع download)'
+        required: false
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -12,22 +16,29 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Download
+      - name: Download and split
+        if: ${{ inputs.mode == 'download' }}
         run: |
           URL="${{ github.event.inputs.mediafire_url }}"
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-          curl -sL -c /tmp/cj -A "$UA" -H "Accept: text/html" "$URL" -o page.html
-          echo "page bytes: $(wc -c < page.html)"
+          curl -sL -c /tmp/cj -A "$UA" "$URL" -o page.html
           DL=$(grep -oE 'https://download[0-9]+\.mediafire\.com/[^"\\]+' page.html | head -1)
-          [ -z "$DL" ] && { echo "لم يُعثر على الرابط — page.html محفوظة للفحص"; git config user.name bot; git config user.email bot@users.noreply.github.com; git add page.html; git commit -m "mediafire page debug"; git push; exit 1; }
-          echo "DL: ${DL:0:80}..."
+          [ -z "$DL" ] && { echo "no link"; exit 1; }
           curl -sL -b /tmp/cj -A "$UA" -H "Referer: $URL" -o src.zip "$DL"
+          head -c 2 src.zip; echo "  <- PK = healthy zip"
           ls -la src.zip
-          head -c 2 src.zip
-      - name: Commit
-        if: success()
+          split -b 24M src.zip appsrc_part_
+          ls -la appsrc_part_*
+      - name: Commit parts to relay branch
+        if: ${{ inputs.mode == 'download' }}
         run: |
           git config user.name "bot"; git config user.email "bot@users.noreply.github.com"
-          git add src.zip
-          git commit -m "src.zip (MediaFire relay)"
-          git push
+          git checkout -B relay/appsrc
+          git add appsrc_part_*
+          git commit -m "appsrc parts (MediaFire relay)"
+          git push origin relay/appsrc
+      - name: Cleanup
+        if: ${{ inputs.mode == 'cleanup' }}
+        run: |
+          git config user.name "bot"; git config user.email "bot@users.noreply.github.com"
+          git push origin --delete relay/appsrc
