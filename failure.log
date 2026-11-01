@@ -1,2 +1,13 @@
 == app ==
+  Determining projects to restore...
+  Restored /home/runner/work/Nova-2/Nova-2/work/NovaPOS.Core/NovaPOS.Core.csproj (in 1.53 sec).
+  Restored /home/runner/work/Nova-2/Nova-2/work/NovaPOS.Data/NovaPOS.Data.csproj (in 1.58 sec).
+  Restored /home/runner/work/Nova-2/Nova-2/work/NovaPOS.Network/NovaPOS.Network.csproj (in 1.58 sec).
+  Restored /home/runner/work/Nova-2/Nova-2/work/NovaPOS.Infrastructure/NovaPOS.Infrastructure.csproj (in 30 ms).
+  Restored /home/runner/work/Nova-2/Nova-2/work/NovaPOS.App/NovaPOS.App.csproj (in 1.58 sec).
+  NovaPOS.Core -> /home/runner/work/Nova-2/Nova-2/work/NovaPOS.Core/bin/Release/net10.0/NovaPOS.Core.dll
+  NovaPOS.Data -> /home/runner/work/Nova-2/Nova-2/work/NovaPOS.Data/bin/Release/net10.0/NovaPOS.Data.dll
+  NovaPOS.Infrastructure -> /home/runner/work/Nova-2/Nova-2/work/NovaPOS.Infrastructure/bin/Release/net10.0-windows/NovaPOS.Infrastructure.dll
+  NovaPOS.Network -> /home/runner/work/Nova-2/Nova-2/work/NovaPOS.Network/bin/Release/net10.0/NovaPOS.Network.dll
+/home/runner/work/Nova-2/Nova-2/work/NovaPOS.App/Styles/Controls.xaml(516,17): error MC4005: Cannot find the Style Property 'AllowsTransparency' on the type 'System.Windows.Controls.ContextMenu'. Line 516 Position 17. [/home/runner/work/Nova-2/Nova-2/work/NovaPOS.App/NovaPOS.App.csproj]
 == server ==
