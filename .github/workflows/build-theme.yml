@@ -11,18 +11,20 @@ jobs:
           dotnet-version: '10.0'
       - name: Unpack buildkit
         run: unzip -q buildkit.zip "theme/*" "bundle-static/*"
-      - name: Fetch src parts (relay/appsrc)
+      - name: Fetch src parts (from relay/appsrc via git)
         run: |
-          for p in aa ab ac ad ae af ag ah ai aj ak; do
-            curl -sfL -H "Accept: application/vnd.github.raw+json" \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              "https://api.github.com/repos/tahirbadro12-hash/Nova-2/contents/appsrc_part_$p?ref=relay/appsrc" \
-              -o "part_$p" || { echo "part $p failed"; exit 1; }
-          done
-          ls -la part_*
-          cat part_aa part_ab part_ac part_ad part_ae part_af part_ag part_ah part_ai part_aj part_ak > src.zip
+          if [ ! -f appsrc_part_aa ]; then
+            git fetch --depth 1 origin relay/appsrc
+            git checkout FETCH_HEAD -- \
+              appsrc_part_aa appsrc_part_ab appsrc_part_ac appsrc_part_ad appsrc_part_ae \
+              appsrc_part_af appsrc_part_ag appsrc_part_ah appsrc_part_ai appsrc_part_aj appsrc_part_ak
+          fi
+          ls -la appsrc_part_*
+          cat appsrc_part_aa appsrc_part_ab appsrc_part_ac appsrc_part_ad appsrc_part_ae \
+              appsrc_part_af appsrc_part_ag appsrc_part_ah appsrc_part_ai appsrc_part_aj \
+              appsrc_part_ak > src.zip
           head -c 2 src.zip; echo "  <- PK"
-          rm -f part_*
+          rm -f appsrc_part_*
       - name: Extract projects (skip bin/obj)
         run: |
           mkdir -p work && cd work
